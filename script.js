@@ -1,4 +1,4 @@
-// =============== COPY DARI SINI ===============
+// Supabase Configuration
 const SUPABASE_URL = 'https://aetnuvotehpbfykakuni.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFldG51dm90ZWhwYmZ5a2FrdW5pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwNTU0OTgsImV4cCI6MjA4NDYzMTQ5OH0.VurModFLejJ-f68RqwpydgrrvCJ84zoNftugg-8SS9k';
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1546,4 +1546,3 @@ async function init() {
 }
 
 init();
-// =============== SAMPE SINI ===============
