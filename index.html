@@ -1,1 +1,521 @@
-<script src="script.js"></script>
+<!doctype html>
+<html lang="en" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BRFT MONITORING SYSTEM PRODUCTION</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    body { box-sizing: border-box; }
+    * { font-family: 'Rajdhani', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; }
+    .toast {
+      position: fixed; top: 20px; right: 20px; padding: 16px 24px;
+      border-radius: 8px; z-index: 9999; animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .tab-active { border-bottom: 3px solid #10b981; color: #10b981; }
+    .card-shadow { box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #1f2937; }
+    ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+    .trend-table th {
+      background-color: #374151;
+      color: #e5e7eb;
+      font-size: 0.75rem;
+      padding: 0.75rem 0.5rem;
+      text-align: center;
+      border-right: 1px solid #4b5563;
+    }
+    .trend-table td {
+      padding: 0.6rem 0.5rem;
+      text-align: center;
+      border-right: 1px solid #4b5563;
+      border-bottom: 1px solid #374151;
+    }
+    .trend-table tr:hover {
+      background-color: #374151;
+    }
+    .item-badge {
+      background-color: #1e3a5f;
+      color: #93c5fd;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      display: inline-block;
+    }
+    .area-badge { background-color: #1e3a5f; color: #93c5fd; }
+    .product-badge { background-color: #3b2e5f; color: #c4b5fd; }
+    .category-badge { background-color: #1e4a4a; color: #99f6e4; }
+    .table-section {
+      margin-top: 1.5rem;
+      border-top: 1px solid #4b5563;
+      padding-top: 1.5rem;
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full bg-gray-900 text-gray-100">
+  <div id="app" class="h-full w-full flex flex-col overflow-auto">
+   <!-- Header -->
+   <header class="bg-gray-800 border-b border-gray-700 px-6 py-4 flex items-center justify-between flex-shrink-0">
+    <div class="flex items-center gap-4">
+     <div class="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center">
+      <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+     </div>
+     <div>
+      <h1 id="app-title" class="text-xl font-bold text-emerald-400">BRFT MONITORING SYSTEM PRODUCTION</h1>
+      <p id="company-name" class="text-xs text-gray-400">Created by MSTD</p>
+     </div>
+    </div>
+    <div class="flex items-center gap-4">
+     <div class="text-right">
+      <div id="current-date" class="text-sm text-gray-400 font-medium"></div>
+      <div id="current-time" class="text-xs text-emerald-400 font-bold tracking-wider mt-1"></div>
+     </div><button id="theme-toggle" class="p-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+      </svg></button>
+     </div>
+    </header>
+   <!-- Navigation Tabs -->
+   <nav class="bg-gray-800 border-b border-gray-700 px-6 flex-shrink-0">
+    <div class="flex gap-1 overflow-x-auto"><button class="tab-btn tab-active px-4 py-3 text-sm font-medium transition hover:text-emerald-400" data-tab="dashboard"> 📊 DASHBOARD </button> <button class="tab-btn px-4 py-3 text-sm font-medium text-gray-400 transition hover:text-emerald-400" data-tab="input"> ➕ INPUT BRFT </button> <button class="tab-btn px-4 py-3 text-sm font-medium text-gray-400 transition hover:text-emerald-400" data-tab="management"> ⚙️ MANAGEMENT </button> <button class="tab-btn px-4 py-3 text-sm font-medium text-gray-400 transition hover:text-emerald-400" data-tab="audit"> 📋 AUDIT TRAIL </button>
+    </div>
+   </nav>
+   <!-- Main Content -->
+   <main class="flex-1 p-6 overflow-auto">
+    <!-- Dashboard Tab -->
+    <div id="dashboard-tab" class="tab-content">
+     <!-- Summary Cards -->
+     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div class="bg-gray-800 rounded-xl p-5 card-shadow border border-gray-700">
+       <div class="flex items-center justify-between">
+        <div>
+         <p class="text-xs text-gray-400 mb-1">Σ TEMUAN</p>
+         <p id="total-findings" class="text-3xl font-bold text-white">0</p>
+        </div>
+        <div class="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center">
+         <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+         </svg>
+        </div>
+       </div>
+      </div>
+      <div class="bg-gray-800 rounded-xl p-5 card-shadow border border-gray-700">
+       <div class="flex items-center justify-between">
+        <div>
+         <p class="text-xs text-gray-400 mb-1">Σ BATCH DENGAN TEMUAN</p>
+         <p id="unique-batches" class="text-3xl font-bold text-orange-400">0</p>
+        </div>
+        <div class="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center">
+         <svg class="w-6 h-6 text-orange-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+         </svg>
+        </div>
+       </div>
+      </div>
+      <div class="bg-gray-800 rounded-xl p-5 card-shadow border border-gray-700">
+       <div class="flex items-center justify-between">
+        <div>
+         <p class="text-xs text-gray-400 mb-1">Σ TOTAL DOKUMEN</p>
+         <p id="target-docs" class="text-3xl font-bold text-blue-400">0</p>
+        </div>
+        <div class="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">
+         <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+         </svg>
+        </div>
+       </div>
+      </div>
+      <div class="bg-gray-800 rounded-xl p-5 card-shadow border border-gray-700">
+       <div class="flex items-center justify-between">
+        <div>
+         <p class="text-xs text-gray-400 mb-1">% BRFT</p>
+         <p id="brft-percentage" class="text-3xl font-bold">-</p>
+        </div>
+        <div id="brft-indicator" class="w-12 h-12 bg-gray-500/20 rounded-xl flex items-center justify-center">
+         <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+         </svg>
+        </div>
+       </div>
+      </div>
+     </div>
+     <!-- Filters -->
+     <div class="bg-gray-800 rounded-xl p-4 mb-6 card-shadow border border-gray-700">
+      <div class="flex flex-wrap gap-3 items-end">
+       <div class="flex-1 min-w-[150px]"><label class="block text-xs text-gray-400 mb-1">DARI TANGGAL</label> <input type="date" id="filter-date-from" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+       </div>
+       <div class="flex-1 min-w-[150px]"><label class="block text-xs text-gray-400 mb-1">SAMPAI TANGGAL</label> <input type="date" id="filter-date-to" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+       </div>
+       <div class="flex-1 min-w-[150px] relative"><label class="block text-xs text-gray-400 mb-1">AREA</label>
+        <div class="multi-select-wrapper"><button type="button" id="filter-area-btn" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-left flex items-center justify-between hover:border-emerald-500 transition"> <span id="filter-area-label">SEMUA AREA</span>
+          <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg></button>
+         <div id="filter-area-dropdown" class="hidden absolute z-50 mt-1 w-full bg-gray-700 border border-gray-600 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+          <div class="p-2 border-b border-gray-600"><label class="flex items-center gap-2 px-2 py-1 hover:bg-gray-600 rounded cursor-pointer"> <input type="checkbox" id="filter-area-all" class="form-checkbox text-emerald-600 rounded" checked> <span class="text-sm">PILIH SEMUA</span> </label>
+          </div>
+          <div id="filter-area-list" class="p-2"></div>
+         </div>
+        </div>
+       </div>
+       <div class="flex-1 min-w-[150px] relative"><label class="block text-xs text-gray-400 mb-1">KODE PRODUK</label>
+        <div class="multi-select-wrapper"><button type="button" id="filter-product-btn" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-left flex items-center justify-between hover:border-emerald-500 transition"> <span id="filter-product-label">SEMUA PRODUK</span>
+          <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg></button>
+         <div id="filter-product-dropdown" class="hidden absolute z-50 mt-1 w-full bg-gray-700 border border-gray-600 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+          <div class="p-2 border-b border-gray-600"><label class="flex items-center gap-2 px-2 py-1 hover:bg-gray-600 rounded cursor-pointer"> <input type="checkbox" id="filter-product-all" class="form-checkbox text-emerald-600 rounded" checked> <span class="text-sm">PILIH SEMUA</span> </label>
+          </div>
+          <div id="filter-product-list" class="p-2"></div>
+         </div>
+        </div>
+       </div>
+       <div class="flex-1 min-w-[150px] relative"><label class="block text-xs text-gray-400 mb-1">KATEGORI</label>
+        <div class="multi-select-wrapper"><button type="button" id="filter-category-btn" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-left flex items-center justify-between hover:border-emerald-500 transition"> <span id="filter-category-label">SEMUA KATEGORI</span>
+          <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg></button>
+         <div id="filter-category-dropdown" class="hidden absolute z-50 mt-1 w-full bg-gray-700 border border-gray-600 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+          <div class="p-2 border-b border-gray-600"><label class="flex items-center gap-2 px-2 py-1 hover:bg-gray-600 rounded cursor-pointer"> <input type="checkbox" id="filter-category-all" class="form-checkbox text-emerald-600 rounded" checked> <span class="text-sm">PILIH SEMUA</span> </label>
+          </div>
+          <div id="filter-category-list" class="p-2"></div>
+         </div>
+        </div>
+       </div>
+       <div class="flex-1 min-w-[150px] relative"><label class="block text-xs text-gray-400 mb-1">INISIAL OPERATOR</label>
+        <div class="multi-select-wrapper"><button type="button" id="filter-operator-btn" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-left flex items-center justify-between hover:border-emerald-500 transition"> <span id="filter-operator-label">SEMUA OPERATOR</span>
+          <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg></button>
+         <div id="filter-operator-dropdown" class="hidden absolute z-50 mt-1 w-full bg-gray-700 border border-gray-600 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+          <div class="p-2 border-b border-gray-600"><label class="flex items-center gap-2 px-2 py-1 hover:bg-gray-600 rounded cursor-pointer"> <input type="checkbox" id="filter-operator-all" class="form-checkbox text-emerald-600 rounded" checked> <span class="text-sm">PILIH SEMUA</span> </label>
+          </div>
+          <div id="filter-operator-list" class="p-2"></div>
+         </div>
+        </div>
+       </div><button id="apply-filter" class="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-lg text-sm font-medium transition"> 🔍 FILTER </button> <button id="reset-filter" class="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg text-sm font-medium transition"> ↺ RESET </button>
+      </div>
+     </div>
+     
+     <!-- =============== CHARTS & TREND TABLES SECTION =============== -->
+     
+     <!-- 1. BRFT TREND & MONTHLY FINDINGS (Tidak ada tabel tambahan) -->
+     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-2">
+      <div class="bg-gray-800 rounded-xl p-5 card-shadow border border-gray-700">
+       <h3 class="text-sm font-semibold text-gray-300 mb-4">📈 TREND % BRFT PER BULAN</h3>
+       <div class="h-64">
+        <canvas id="chart-trend"></canvas>
+       </div>
+      </div>
+      <div class="bg-gray-800 rounded-xl p-5 card-shadow border border-gray-700">
+       <h3 class="text-sm font-semibold text-gray-300 mb-4">📊 TREND TEMUAN PER BULAN</h3>
+       <div class="h-64">
+        <canvas id="chart-monthly"></canvas>
+       </div>
+      </div>
+     </div>
+
+     <!-- 2. AREA - Grafik & Tabel -->
+     <div class="bg-gray-800 rounded-xl p-5 card-shadow border border-gray-700 mb-6">
+      <h3 class="text-sm font-semibold text-gray-300 mb-4">🏭 AREA PRODUKSI</h3>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+       <div>
+        <div class="h-64">
+         <canvas id="chart-area"></canvas>
+        </div>
+       </div>
+       <div>
+        <div class="text-xs text-emerald-400 mb-2 font-bold">📋 TREN TEMUAN PER AREA SETIAP BULAN (TOP 8)</div>
+        <div class="overflow-x-auto max-h-72 overflow-y-auto border border-gray-700 rounded-lg">
+         <table class="w-full text-sm trend-table">
+          <thead class="sticky top-0 bg-gray-700 z-10">
+           <tr id="trend-table-header-area"></tr>
+          </thead>
+          <tbody id="trend-table-body-area"></tbody>
+         </table>
+        </div>
+       </div>
+      </div>
+     </div>
+
+     <!-- 3. PRODUK - Grafik & Tabel -->
+     <div class="bg-gray-800 rounded-xl p-5 card-shadow border border-gray-700 mb-6">
+      <h3 class="text-sm font-semibold text-gray-300 mb-4">📦 KODE PRODUK</h3>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+       <div>
+        <div class="h-64">
+         <canvas id="chart-product"></canvas>
+        </div>
+       </div>
+       <div>
+        <div class="text-xs text-emerald-400 mb-2 font-bold">📋 TREN TEMUAN PER PRODUK SETIAP BULAN (TOP 8)</div>
+        <div class="overflow-x-auto max-h-72 overflow-y-auto border border-gray-700 rounded-lg">
+         <table class="w-full text-sm trend-table">
+          <thead class="sticky top-0 bg-gray-700 z-10">
+           <tr id="trend-table-header-product"></tr>
+          </thead>
+          <tbody id="trend-table-body-product"></tbody>
+         </table>
+        </div>
+       </div>
+      </div>
+     </div>
+
+     <!-- 4. OPERATOR - Grafik & Tabel -->
+     <div class="bg-gray-800 rounded-xl p-5 card-shadow border border-gray-700 mb-6">
+      <h3 class="text-sm font-semibold text-gray-300 mb-4">👤 OPERATOR</h3>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+       <div>
+        <div class="h-64">
+         <canvas id="chart-operator"></canvas>
+        </div>
+       </div>
+       <div>
+        <div class="text-xs text-emerald-400 mb-2 font-bold">📋 TREN TEMUAN PER OPERATOR SETIAP BULAN (TOP 10)</div>
+        <div class="overflow-x-auto max-h-72 overflow-y-auto border border-gray-700 rounded-lg">
+         <table class="w-full text-sm trend-table">
+          <thead class="sticky top-0 bg-gray-700 z-10">
+           <tr id="trend-table-header-operator"></tr>
+          </thead>
+          <tbody id="trend-table-body-operator"></tbody>
+         </table>
+        </div>
+       </div>
+      </div>
+     </div>
+
+     <!-- 5. KATEGORI - Grafik & Tabel -->
+     <div class="bg-gray-800 rounded-xl p-5 card-shadow border border-gray-700 mb-6">
+      <h3 class="text-sm font-semibold text-gray-300 mb-4">🏷️ KATEGORI TEMUAN</h3>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+       <div>
+        <div class="h-64">
+         <canvas id="chart-category"></canvas>
+        </div>
+       </div>
+       <div>
+        <div class="text-xs text-emerald-400 mb-2 font-bold">📋 TREN TEMUAN PER KATEGORI SETIAP BULAN (TOP 8)</div>
+        <div class="overflow-x-auto max-h-72 overflow-y-auto border border-gray-700 rounded-lg">
+         <table class="w-full text-sm trend-table">
+          <thead class="sticky top-0 bg-gray-700 z-10">
+           <tr id="trend-table-header-category"></tr>
+          </thead>
+          <tbody id="trend-table-body-category"></tbody>
+         </table>
+        </div>
+       </div>
+      </div>
+     </div>
+
+     <!-- Data Table -->
+     <div class="bg-gray-800 rounded-xl p-5 card-shadow border border-gray-700">
+      <div class="flex justify-between items-center mb-4">
+       <h3 class="text-sm font-semibold text-gray-300">📋 DETAIL TEMUAN</h3>
+       <div class="flex gap-2">
+        <button id="export-pdf-findings" class="bg-red-600 hover:bg-red-700 px-3 py-2 rounded-lg text-xs font-medium transition flex items-center gap-2"> 📄 PDF </button>
+        <button id="export-excel-findings" class="bg-green-600 hover:bg-green-700 px-3 py-2 rounded-lg text-xs font-medium transition flex items-center gap-2"> 📊 EXCEL </button>
+       </div>
+      </div>
+      <div class="overflow-x-auto">
+       <table class="w-full text-sm">
+        <thead>
+         <tr class="border-b border-gray-700">
+          <th class="text-left py-3 px-3 text-gray-400 font-medium">NO</th>
+          <th class="text-left py-3 px-3 text-gray-400 font-medium">TANGGAL</th>
+          <th class="text-left py-3 px-3 text-gray-400 font-medium">INISIAL</th>
+          <th class="text-left py-3 px-3 text-gray-400 font-medium">AREA</th>
+          <th class="text-left py-3 px-3 text-gray-400 font-medium">KATEGORI</th>
+          <th class="text-left py-3 px-3 text-gray-400 font-medium">NO. BATCH</th>
+          <th class="text-left py-3 px-3 text-gray-400 font-medium">TEMUAN PPI</th>
+         </tr>
+        </thead>
+        <tbody id="findings-table" class="divide-y divide-gray-700">
+         <tr>
+          <td colspan="7" class="py-8 text-center text-gray-500">TIDAK ADA DATA</td>
+         </tr>
+        </tbody>
+       </table>
+      </div>
+     </div>
+    </div>
+    <!-- Input Tab -->
+    <div id="input-tab" class="tab-content hidden">
+     <div class="max-w-2xl mx-auto">
+      <div class="bg-gray-800 rounded-xl p-6 card-shadow border border-gray-700">
+       <h2 class="text-lg font-bold text-emerald-400 mb-6 flex items-center gap-2"><span>➕</span> INPUT TEMUAN BRFT</h2>
+       <form id="finding-form" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+         <div><label class="block text-xs text-gray-400 mb-1">TANGGAL TEMUAN *</label> <input type="date" id="input-date" required class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+         </div>
+         <div><label class="block text-xs text-gray-400 mb-1">AREA PRODUKSI *</label> <select id="input-area" required class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500"> <option value="">PILIH AREA</option> </select>
+         </div>
+         <div><label class="block text-xs text-gray-400 mb-1">KATEGORI TEMUAN *</label> <select id="input-category" required class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500"> <option value="">PILIH KATEGORI</option> </select>
+         </div>
+         <div><label class="block text-xs text-gray-400 mb-1">KODE PRODUK *</label> <select id="input-product" required class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500"> <option value="">PILIH PRODUK</option> </select>
+         </div>
+         <div><label class="block text-xs text-gray-400 mb-1">NOMOR BATCH *</label> <input type="text" id="input-batch" required placeholder="MASUKKAN NO. BATCH" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 placeholder-gray-500">
+         </div>
+         <div><label class="block text-xs text-gray-400 mb-1">INISIAL OPERATOR *</label> <select id="input-operator" required class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500"> <option value="">PILIH OPERATOR</option> </select>
+        </div>
+        </div>
+        <div><label class="block text-xs text-gray-400 mb-1">DESKRIPSI TEMUAN PPI *</label> <textarea id="input-description" required rows="4" placeholder="JELASKAN TEMUAN SECARA DETAIL..." class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 placeholder-gray-500 resize-none"></textarea>
+        </div>
+        <div class="flex gap-3 pt-2"><button type="submit" id="submit-finding" class="flex-1 bg-emerald-600 hover:bg-emerald-700 py-3 rounded-lg font-medium transition flex items-center justify-center gap-2"> <span>💾</span> SIMPAN TEMUAN </button> <button type="reset" class="px-6 bg-gray-600 hover:bg-gray-500 py-3 rounded-lg font-medium transition"> ↺ RESET </button>
+        </div>
+       </form>
+      </div>
+     </div>
+    </div>
+    <!-- Management Tab -->
+    <div id="management-tab" class="tab-content hidden">
+     <!-- Login Panel -->
+     <div id="admin-login" class="max-w-md mx-auto">
+      <div class="bg-gray-800 rounded-xl p-6 card-shadow border border-gray-700">
+       <div class="text-center mb-6">
+        <div class="w-16 h-16 bg-emerald-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
+         <svg class="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+         </svg>
+        </div>
+        <h2 class="text-lg font-bold text-white">ADMIN LOGIN</h2>
+        <p class="text-xs text-gray-400 mt-1">MASUKKAN PASSWORD UNTUK AKSES MANAJEMEN</p>
+       </div>
+       <div class="space-y-4">
+        <div><label class="block text-xs text-gray-400 mb-1">PASSWORD</label> <input type="password" id="admin-password" placeholder="•••••••••" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 placeholder-gray-500">
+        </div><button id="admin-login-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 py-3 rounded-lg font-medium transition"> 🔓 LOGIN </button>
+       </div>
+      </div>
+     </div>
+     <!-- Admin Panel -->
+     <div id="admin-panel" class="hidden">
+      <div class="flex justify-between items-center mb-6">
+       <h2 class="text-lg font-bold text-emerald-400">⚙️ BRFT MANAGEMENT</h2><button id="admin-logout" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2"> 🚪 LOGOUT </button>
+      </div>
+      <!-- Sub-tabs -->
+      <div class="bg-gray-800 rounded-t-xl border border-gray-700 border-b-0">
+       <div class="flex overflow-x-auto"><button class="mgmt-tab mgmt-tab-active px-4 py-3 text-sm font-medium border-b-2 border-emerald-500 text-emerald-400" data-mgmt="operators">👤 OPERATOR</button> <button class="mgmt-tab px-4 py-3 text-sm font-medium text-gray-400 hover:text-emerald-400" data-mgmt="products">📦 KODE PRODUK</button> <button class="mgmt-tab px-4 py-3 text-sm font-medium text-gray-400 hover:text-emerald-400" data-mgmt="areas">🏭 AREA</button> <button class="mgmt-tab px-4 py-3 text-sm font-medium text-gray-400 hover:text-emerald-400" data-mgmt="categories">🏷️ KATEGORI</button> <button class="mgmt-tab px-4 py-3 text-sm font-medium text-gray-400 hover:text-emerald-400" data-mgmt="targets">🎯 TARGET</button> <button class="mgmt-tab px-4 py-3 text-sm font-medium text-gray-400 hover:text-emerald-400" data-mgmt="findings">📋 TEMUAN</button>
+       </div>
+      </div>
+      <div class="bg-gray-800 rounded-b-xl p-5 border border-gray-700 border-t-0">
+       <!-- Operators Management -->
+       <div id="mgmt-operators" class="mgmt-content">
+        <div class="flex gap-3 mb-4"><input type="text" id="new-operator" placeholder="INISIAL OPERATOR BARU" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 placeholder-gray-500"> <button id="add-operator" class="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-lg text-sm font-medium transition">➕ TAMBAH</button>
+        </div>
+        <div id="operators-list" class="space-y-2 max-h-64 overflow-y-auto"></div>
+       </div>
+       <!-- Products Management -->
+       <div id="mgmt-products" class="mgmt-content hidden">
+        <div class="flex gap-3 mb-4"><input type="text" id="new-product" placeholder="KODE PRODUK BARU" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 placeholder-gray-500"> <button id="add-product" class="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-lg text-sm font-medium transition">➕ TAMBAH</button>
+        </div>
+        <div id="products-list" class="space-y-2 max-h-64 overflow-y-auto"></div>
+       </div>
+       <!-- Areas Management -->
+       <div id="mgmt-areas" class="mgmt-content hidden">
+        <div class="flex gap-3 mb-4"><input type="text" id="new-area" placeholder="NAMA AREA BARU" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 placeholder-gray-500"> <button id="add-area" class="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-lg text-sm font-medium transition">➕ TAMBAH</button>
+        </div>
+        <div id="areas-list" class="space-y-2 max-h-64 overflow-y-auto"></div>
+       </div>
+       <!-- Categories Management -->
+       <div id="mgmt-categories" class="mgmt-content hidden">
+        <div class="flex gap-3 mb-4"><input type="text" id="new-category" placeholder="NAMA KATEGORI BARU" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 placeholder-gray-500"> <button id="add-category" class="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-lg text-sm font-medium transition">➕ TAMBAH</button>
+        </div>
+        <div id="categories-list" class="space-y-2 max-h-64 overflow-y-auto"></div>
+       </div>
+       <!-- Targets Management -->
+       <div id="mgmt-targets" class="mgmt-content hidden">
+        <div class="flex gap-3 mb-4"><input type="month" id="new-target-month" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500"> <input type="number" id="new-target-value" placeholder="Σ TOTAL DOKUMEN" min="1" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 placeholder-gray-500"> <button id="add-target" class="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-lg text-sm font-medium transition">➕ TAMBAH</button>
+        </div>
+        <div id="targets-list" class="space-y-2 max-h-64 overflow-y-auto"></div>
+       </div>
+       <!-- Findings Management -->
+       <div id="mgmt-findings" class="mgmt-content hidden">
+        <div class="overflow-x-auto max-h-96">
+         <table class="w-full text-sm">
+          <thead class="sticky top-0 bg-gray-800">
+           <tr class="border-b border-gray-700">
+            <th class="text-left py-2 px-2 text-gray-400 font-medium">TANGGAL</th>
+            <th class="text-left py-2 px-2 text-gray-400 font-medium">INISIAL</th>
+            <th class="text-left py-2 px-2 text-gray-400 font-medium">AREA</th>
+            <th class="text-left py-2 px-2 text-gray-400 font-medium">BATCH</th>
+            <th class="text-left py-2 px-2 text-gray-400 font-medium">AKSI</th>
+           </tr>
+          </thead>
+          <tbody id="findings-mgmt-list" class="divide-y divide-gray-700"></tbody>
+         </table>
+        </div>
+       </div>
+      </div>
+     </div>
+    </div>
+    <!-- Audit Trail Tab -->
+    <div id="audit-tab" class="tab-content hidden">
+     <div class="bg-gray-800 rounded-xl p-5 card-shadow border border-gray-700 mb-6">
+      <div class="flex flex-wrap gap-3 items-end">
+       <div class="flex-1 min-w-[150px]"><label class="block text-xs text-gray-400 mb-1">DARI TANGGAL</label> <input type="date" id="audit-date-from" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500">
+       </div>
+       <div class="flex-1 min-w-[150px]"><label class="block text-xs text-gray-400 mb-1">SAMPAI TANGGAL</label> <input type="date" id="audit-date-to" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500">
+       </div>
+       <div class="flex-1 min-w-[120px]"><label class="block text-xs text-gray-400 mb-1">AREA</label> <select id="audit-filter-area" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500"> <option value="">SEMUA</option> </select>
+       </div>
+       <div class="flex-1 min-w-[120px]"><label class="block text-xs text-gray-400 mb-1">PRODUK</label> <select id="audit-filter-product" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500"> <option value="">SEMUA</option> </select>
+       </div>
+       <div class="flex-1 min-w-[120px]"><label class="block text-xs text-gray-400 mb-1">KATEGORI</label> <select id="audit-filter-category" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500"> <option value="">SEMUA</option> </select>
+       </div>
+       <div class="flex-1 min-w-[120px]"><label class="block text-xs text-gray-400 mb-1">INISIAL</label> <select id="audit-filter-initial" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500"> <option value="">SEMUA</option> </select>
+       </div><button id="audit-filter-btn" class="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-lg text-sm font-medium transition">🔍 FILTER</button> <button id="audit-reset-btn" class="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg text-sm font-medium transition">↺ RESET</button> <button id="export-pdf-audit" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-medium transition">📄 EXPORT PDF</button>
+      </div>
+     </div>
+     <div class="bg-gray-800 rounded-xl p-5 card-shadow border border-gray-700">
+      <h3 class="text-sm font-semibold text-gray-300 mb-4">📋 AUDIT TRAIL LOG</h3>
+      <div class="overflow-x-auto max-h-96">
+       <table class="w-full text-sm">
+        <thead class="sticky top-0 bg-gray-800">
+         <tr class="border-b border-gray-700">
+          <th class="text-left py-3 px-3 text-gray-400 font-medium">TIMESTAMP</th>
+          <th class="text-left py-3 px-3 text-gray-400 font-medium">AKSI</th>
+          <th class="text-left py-3 px-3 text-gray-400 font-medium">DETAIL</th>
+         </tr>
+        </thead>
+        <tbody id="audit-table" class="divide-y divide-gray-700">
+         <tr>
+          <td colspan="3" class="py-8 text-center text-gray-500">TIDAK ADA LOG</td>
+         </tr>
+        </tbody>
+       </table>
+      </div>
+     </div>
+    </div>
+   </main>
+  </div>
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+  <!-- Delete Confirmation Modal -->
+  <div id="delete-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+   <div class="bg-gray-800 rounded-xl p-6 max-w-md w-full mx-4 border border-gray-700">
+    <h3 class="text-lg font-bold text-white mb-2">⚠️ KONFIRMASI HAPUS</h3>
+    <p id="delete-message" class="text-gray-400 mb-6">APAKAH ANDA YAKIN INGIN MENGHAPUS DATA INI?</p>
+    <div class="flex gap-3"><button id="confirm-delete" class="flex-1 bg-red-600 hover:bg-red-700 py-2 rounded-lg font-medium transition">🗑️ HAPUS</button> <button id="cancel-delete" class="flex-1 bg-gray-600 hover:bg-gray-500 py-2 rounded-lg font-medium transition">❌ BATAL</button>
+    </div>
+   </div>
+  </div>
+  <!-- Edit Modal -->
+  <div id="edit-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+   <div class="bg-gray-800 rounded-xl p-6 max-w-md w-full mx-4 border border-gray-700">
+    <h3 class="text-lg font-bold text-white mb-4">✏️ EDIT DATA</h3>
+    <div class="mb-4"><label class="block text-xs text-gray-400 mb-1">NILAI BARU</label> <input type="text" id="edit-value" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500">
+    </div>
+    <div class="flex gap-3"><button id="confirm-edit" class="flex-1 bg-emerald-600 hover:bg-emerald-700 py-2 rounded-lg font-medium transition">💾 SIMPAN</button> <button id="cancel-edit" class="flex-1 bg-gray-600 hover:bg-gray-500 py-2 rounded-lg font-medium transition">❌ BATAL</button>
+    </div>
+   </div>
+  </div>
+  
+  <!-- SATU-SATUNYA SCRIPT YANG DIPANGGIL -->
+  <script src="script.js"></script>
+ </body>
+</html>
